@@ -3,7 +3,6 @@ package app
 import org.http4k.client.JettyClient
 import org.http4k.core.Method
 import org.http4k.core.Request
-import org.http4k.core.Response
 import org.http4k.core.Status
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
@@ -32,7 +31,10 @@ class SeeATodoListTest {
         listName: String,
         foodToBuy: List<String>,
     ) {
-        Zettai().asServer(Jetty(9090)).start()
+        val toDoList = ToDoList(ListName(listName), items = foodToBuy.map(::ToDoItem))
+        val lists = mapOf(User(user) to listOf(toDoList))
+        val server = Zettai(lists).asServer(Jetty(9090))
+        server.start()
     }
 
     private fun getTodoList(
@@ -43,13 +45,31 @@ class SeeATodoListTest {
         val request = Request(Method.GET, "http://localhost:9090/todo/$user/$listName")
         val response = client(request)
         return if (response.status == Status.OK) {
-            parseResponse(response)
+            parseResponse(response.bodyString())
         } else {
             fail(response.toMessage())
         }
     }
 
-    private fun parseResponse(response: Response): ToDoList {
-        TODO("Not yet implemented")
+    private fun parseResponse(html: String): ToDoList {
+        val nameRegex = "<h2>.*<".toRegex()
+        val listName = ListName(extractListName(nameRegex, html))
+        val itemRegex = "<td>.*?<".toRegex()
+        val items = itemRegex.findAll(html).map { ToDoItem(extractItemsDesc(it)) }.toList()
+
+        return ToDoList(listName, items)
     }
+
+    private fun extractItemsDesc(matchResult: MatchResult): String =
+        matchResult.value.substringAfter("<td>").dropLast(1)
+
+    private fun extractListName(
+        nameRegex: Regex,
+        html: String,
+    ): String =
+        nameRegex.find(html)
+            ?.value
+            ?.substringAfter("<h2>")
+            ?.dropLast(1)
+            .orEmpty()
 }
