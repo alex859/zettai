@@ -23,7 +23,7 @@ class SeeATodoListTest {
 
         val server = startApplication(frank.name, listName, foodToBuy).also { it.start() }
 
-        frank.canSeeTheList(listName, foodToBuy)
+        frank.canSeeTheList(listName, foodToBuy, ApplicationForAcceptanceTest())
 
         server.stop()
     }
@@ -35,9 +35,8 @@ class SeeATodoListTest {
 
         val server = startApplication("frank", listName, emptyList()).also { it.start() }
 
-        expectThrows<AssertionFailedError> {
-            bob.canSeeTheList(listName, emptyList())
-        }
+        bob.cannotSeeTheList(listName, ApplicationForAcceptanceTest())
+
         server.stop()
     }
 
@@ -58,18 +57,26 @@ interface ScenarioActor {
 }
 
 class ToDoListOwner(override val name: String) : ScenarioActor {
-    fun canSeeTheList(listName: String, items: List<String>) {
+    fun canSeeTheList(listName: String, items: List<String>, app: ApplicationForAcceptanceTest) {
         val expectedList = createList(listName, items)
 
-        val list = getTodoList(name, listName)
+        val list = app.getTodoList(name, listName)
 
         expectThat(list).isEqualTo(expectedList)
     }
 
+    fun cannotSeeTheList(listName: String, app: ApplicationForAcceptanceTest) {
+        expectThrows<AssertionFailedError> {
+            app.getTodoList(name, listName)
+        }
+    }
+
     private fun createList(listName: String, items: List<String>) =
         ToDoList(ListName(listName), items = items.map(::ToDoItem))
+}
 
-    private fun getTodoList(
+class ApplicationForAcceptanceTest {
+    fun getTodoList(
         user: String,
         listName: String,
     ): ToDoList {
