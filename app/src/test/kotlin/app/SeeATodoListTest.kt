@@ -8,7 +8,6 @@ import org.http4k.core.Status
 import org.http4k.core.Uri
 import org.http4k.core.then
 import org.http4k.filter.ClientFilters
-import org.http4k.server.Http4kServer
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
 import org.junit.jupiter.api.Test
@@ -29,42 +28,42 @@ class SeeATodoListTest {
     val gardenItems = listOf("fix the lawn", "water the plants")
     val bobList = createList("gardening", gardenItems)
 
-    val lists = mapOf(
-        frank.asUser() to listOf(frankList),
-        bob.asUser() to listOf(bobList)
-    )
+    val lists =
+        mapOf(
+            frank.asUser() to listOf(frankList),
+            bob.asUser() to listOf(bobList),
+        )
 
     @Test
     fun `List owners can see their list`() {
         val app = startApplication(lists)
-        app.runScenario {
-            frank.canSeeTheList("shopping", foodToBuy, it)
-            bob.canSeeTheList("gardening", gardenItems, it)
-        }
+        app.runScenario(
+            frank.canSeeTheList("shopping", foodToBuy),
+            bob.canSeeTheList("gardening", gardenItems),
+        )
     }
 
     @Test
     fun `Only owners can see their lists`() {
         val app = startApplication(lists)
-        app.runScenario {
-            frank.cannotSeeTheList("gardening", it)
-            bob.cannotSeeTheList("shopping", it)
-        }
+        app.runScenario(
+            frank.cannotSeeTheList("gardening"),
+            bob.cannotSeeTheList("shopping"),
+        )
     }
+}
 
-    private fun startApplication(
-        lists: Map<User, List<ToDoList>>,
-    ): ApplicationForAcceptanceTest {
-        val port = 9090
-        val server = Zettai(lists).asServer(Jetty(port))
-        server.start()
+private fun startApplication(lists: Map<User, List<ToDoList>>): ApplicationForAcceptanceTest {
+    val port = 9090
+    val server = Zettai(lists).asServer(Jetty(port))
+    server.start()
 
-        val client = ClientFilters
+    val client =
+        ClientFilters
             .SetBaseUriFrom(Uri.of("http://localhost:$port"))
             .then(JettyClient())
 
-        return ApplicationForAcceptanceTest(client, server)
-    }
+    return ApplicationForAcceptanceTest(client, server)
 }
 
 interface ScenarioActor {
@@ -72,23 +71,28 @@ interface ScenarioActor {
 }
 
 class ToDoListOwner(override val name: String) : ScenarioActor {
-    fun canSeeTheList(listName: String, items: List<String>, app: ApplicationForAcceptanceTest) {
-        val expectedList = createList(listName, items)
+    fun canSeeTheList(
+        listName: String,
+        items: List<String>,
+    ): Step =
+        {
+            val expectedList = createList(listName, items)
 
-        val list = app.getTodoList(name, listName)
+            val list = getTodoList(name, listName)
 
-        expectThat(list).isEqualTo(expectedList)
-    }
-
-    fun cannotSeeTheList(listName: String, app: ApplicationForAcceptanceTest) {
-        expectThrows<AssertionFailedError> {
-            app.getTodoList(name, listName)
+            expectThat(list).isEqualTo(expectedList)
         }
-    }
+
+    fun cannotSeeTheList(listName: String): Step =
+        {
+            expectThrows<AssertionFailedError> {
+                getTodoList(name, listName)
+            }
+        }
 }
 
-class ApplicationForAcceptanceTest(val client: HttpHandler, private val server: AutoCloseable) {
-    fun getTodoList(
+class ApplicationForAcceptanceTest(val client: HttpHandler, private val server: AutoCloseable) : Actions {
+    override fun getTodoList(
         user: String,
         listName: String,
     ): ToDoList {
@@ -100,9 +104,9 @@ class ApplicationForAcceptanceTest(val client: HttpHandler, private val server: 
         }
     }
 
-    fun runScenario(steps: (ApplicationForAcceptanceTest) -> Unit) {
+    fun runScenario(vararg steps: Step) {
         server.use {
-            steps(this)
+            steps.onEach { step -> this.step() }
         }
     }
 
@@ -129,5 +133,16 @@ class ApplicationForAcceptanceTest(val client: HttpHandler, private val server: 
             .orEmpty()
 }
 
-private fun createList(listName: String, items: List<String>) =
-    ToDoList(ListName(listName), items = items.map(::ToDoItem))
+private fun createList(
+    listName: String,
+    items: List<String>,
+) = ToDoList(ListName(listName), items = items.map(::ToDoItem))
+
+interface Actions {
+    fun getTodoList(
+        user: String,
+        listName: String,
+    ): ToDoList?
+}
+
+typealias Step = Actions.() -> Unit
