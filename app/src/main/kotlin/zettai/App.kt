@@ -1,4 +1,4 @@
-package app
+package zettai
 
 import org.http4k.server.Jetty
 import org.http4k.server.asServer

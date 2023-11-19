@@ -1,4 +1,4 @@
-package util
+package zettai.util
 
 typealias FUN<A, B> = (A) -> B
 

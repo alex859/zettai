@@ -1,6 +1,6 @@
 @file:Suppress("PackageNaming")
 
-package exercises2
+package zettai.exercises2
 
 data class FuncStack<T>(private val elements: List<T> = emptyList()) {
     fun push(element: T): FuncStack<T> {

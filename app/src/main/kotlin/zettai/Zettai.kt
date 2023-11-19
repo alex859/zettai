@@ -1,4 +1,4 @@
-package app
+package zettai
 
 import org.http4k.core.HttpHandler
 import org.http4k.core.Method
@@ -8,7 +8,7 @@ import org.http4k.core.Status
 import org.http4k.routing.bind
 import org.http4k.routing.path
 import org.http4k.routing.routes
-import util.andThen
+import zettai.util.andThen
 
 data class Zettai(val hub: ZettaiHub) : HttpHandler {
     private val showList: HttpHandler =
@@ -60,11 +60,3 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
 }
 
 data class HtmlPage(val raw: String)
-
-data class ToDoList(val name: ListName, val items: List<ToDoItem>)
-
-data class ListName(val value: String)
-
-data class ToDoItem(val description: String)
-
-data class User(val name: String)

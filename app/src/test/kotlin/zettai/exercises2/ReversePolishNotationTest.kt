@@ -1,6 +1,6 @@
 @file:Suppress("PackageNaming")
 
-package exercises2
+package zettai.exercises2
 
 import org.junit.jupiter.api.Test
 import strikt.api.expectThat

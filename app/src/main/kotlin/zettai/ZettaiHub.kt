@@ -1,4 +1,4 @@
-package app
+package zettai
 
 interface ZettaiHub {
     fun getList(

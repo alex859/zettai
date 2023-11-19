@@ -1,4 +1,4 @@
-package app
+package zettai
 
 import org.http4k.client.JettyClient
 import org.http4k.core.HttpHandler
