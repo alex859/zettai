@@ -17,27 +17,26 @@ import strikt.assertions.isEqualTo
 class SeeATodoListTest {
     @Test
     fun `List owners can see their list`() {
-        val user = "frank"
         val listName = "shopping"
         val foodToBuy = listOf("carrots", "apples", "milk")
+        val frank = ToDoListOwner("frank")
 
-        val server = startApplication(user, listName, foodToBuy).also { it.start() }
+        val server = startApplication(frank.name, listName, foodToBuy).also { it.start() }
 
-        val list = getTodoList(user, listName)
+        frank.canSeeTheList(listName, foodToBuy)
 
-        expectThat(list.name.value) isEqualTo listName
-        expectThat(list.items.map { it.description }) isEqualTo foodToBuy
         server.stop()
     }
 
     @Test
     fun `Only owners can see their lists`() {
         val listName = "shopping"
+        val bob = ToDoListOwner("bob")
 
         val server = startApplication("frank", listName, emptyList()).also { it.start() }
 
         expectThrows<AssertionFailedError> {
-            getTodoList("bob", listName)
+            bob.canSeeTheList(listName, emptyList())
         }
         server.stop()
     }
@@ -52,6 +51,23 @@ class SeeATodoListTest {
         val server = Zettai(lists).asServer(Jetty(9090))
         return server
     }
+}
+
+interface ScenarioActor {
+    val name: String
+}
+
+class ToDoListOwner(override val name: String) : ScenarioActor {
+    fun canSeeTheList(listName: String, items: List<String>) {
+        val expectedList = createList(listName, items)
+
+        val list = getTodoList(name, listName)
+
+        expectThat(list).isEqualTo(expectedList)
+    }
+
+    private fun createList(listName: String, items: List<String>) =
+        ToDoList(ListName(listName), items = items.map(::ToDoItem))
 
     private fun getTodoList(
         user: String,
