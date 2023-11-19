@@ -55,7 +55,7 @@ class SeeATodoListTest {
 
 private fun startApplication(lists: Map<User, List<ToDoList>>): ApplicationForAcceptanceTest {
     val port = 9090
-    val server = Zettai(lists).asServer(Jetty(port))
+    val server = Zettai(ToDoListHub(lists)).asServer(Jetty(port))
     server.start()
 
     val client =

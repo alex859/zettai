@@ -10,7 +10,7 @@ import org.http4k.routing.path
 import org.http4k.routing.routes
 import util.andThen
 
-data class Zettai(val lists: Map<User, List<ToDoList>>) : HttpHandler {
+data class Zettai(val hub: ZettaiHub) : HttpHandler {
     private val showList: HttpHandler =
         ::extractListData andThen
             ::fetchListContent andThen
@@ -32,9 +32,7 @@ data class Zettai(val lists: Map<User, List<ToDoList>>) : HttpHandler {
 
     private fun fetchListContent(listData: Pair<User, ListName>): ToDoList {
         val (user, listName) = listData
-        return lists[user]
-            ?.firstOrNull { it.name == listName }
-            ?: error("Unknown list")
+        return hub.getList(user, listName) ?: error("Unknown list")
     }
 
     private fun renderHtmlPage(toDoList: ToDoList) =
