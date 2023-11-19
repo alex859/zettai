@@ -4,11 +4,14 @@ import org.http4k.client.JettyClient
 import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Status
+import org.http4k.server.Http4kServer
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.fail
+import org.opentest4j.AssertionFailedError
 import strikt.api.expectThat
+import strikt.api.expectThrows
 import strikt.assertions.isEqualTo
 
 class SeeATodoListTest {
@@ -18,23 +21,36 @@ class SeeATodoListTest {
         val listName = "shopping"
         val foodToBuy = listOf("carrots", "apples", "milk")
 
-        startApplication(user, listName, foodToBuy)
+        val server = startApplication(user, listName, foodToBuy).also { it.start() }
 
         val list = getTodoList(user, listName)
 
         expectThat(list.name.value) isEqualTo listName
         expectThat(list.items.map { it.description }) isEqualTo foodToBuy
+        server.stop()
+    }
+
+    @Test
+    fun `Only owners can see their lists`() {
+        val listName = "shopping"
+
+        val server = startApplication("frank", listName, emptyList()).also { it.start() }
+
+        expectThrows<AssertionFailedError> {
+            getTodoList("bob", listName)
+        }
+        server.stop()
     }
 
     private fun startApplication(
         user: String,
         listName: String,
         foodToBuy: List<String>,
-    ) {
+    ): Http4kServer {
         val toDoList = ToDoList(ListName(listName), items = foodToBuy.map(::ToDoItem))
         val lists = mapOf(User(user) to listOf(toDoList))
         val server = Zettai(lists).asServer(Jetty(9090))
-        server.start()
+        return server
     }
 
     private fun getTodoList(
