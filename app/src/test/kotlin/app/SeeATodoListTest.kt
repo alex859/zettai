@@ -1,9 +1,13 @@
 package app
 
 import org.http4k.client.JettyClient
+import org.http4k.core.HttpHandler
 import org.http4k.core.Method
 import org.http4k.core.Request
 import org.http4k.core.Status
+import org.http4k.core.Uri
+import org.http4k.core.then
+import org.http4k.filter.ClientFilters
 import org.http4k.server.Http4kServer
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
@@ -14,41 +18,52 @@ import strikt.api.expectThat
 import strikt.api.expectThrows
 import strikt.assertions.isEqualTo
 
+private fun ToDoListOwner.asUser() = User(name)
+
 class SeeATodoListTest {
+    val frank = ToDoListOwner("frank")
+    val foodToBuy = listOf("carrots", "apples", "milk")
+    val frankList = createList("shopping", foodToBuy)
+
+    val bob = ToDoListOwner("bob")
+    val gardenItems = listOf("fix the lawn", "water the plants")
+    val bobList = createList("gardening", gardenItems)
+
+    val lists = mapOf(
+        frank.asUser() to listOf(frankList),
+        bob.asUser() to listOf(bobList)
+    )
+
     @Test
     fun `List owners can see their list`() {
-        val listName = "shopping"
-        val foodToBuy = listOf("carrots", "apples", "milk")
-        val frank = ToDoListOwner("frank")
-
-        val server = startApplication(frank.name, listName, foodToBuy).also { it.start() }
-
-        frank.canSeeTheList(listName, foodToBuy, ApplicationForAcceptanceTest())
-
-        server.stop()
+        val app = startApplication(lists)
+        app.runScenario {
+            frank.canSeeTheList("shopping", foodToBuy, it)
+            bob.canSeeTheList("gardening", gardenItems, it)
+        }
     }
 
     @Test
     fun `Only owners can see their lists`() {
-        val listName = "shopping"
-        val bob = ToDoListOwner("bob")
-
-        val server = startApplication("frank", listName, emptyList()).also { it.start() }
-
-        bob.cannotSeeTheList(listName, ApplicationForAcceptanceTest())
-
-        server.stop()
+        val app = startApplication(lists)
+        app.runScenario {
+            frank.cannotSeeTheList("gardening", it)
+            bob.cannotSeeTheList("shopping", it)
+        }
     }
 
     private fun startApplication(
-        user: String,
-        listName: String,
-        foodToBuy: List<String>,
-    ): Http4kServer {
-        val toDoList = ToDoList(ListName(listName), items = foodToBuy.map(::ToDoItem))
-        val lists = mapOf(User(user) to listOf(toDoList))
-        val server = Zettai(lists).asServer(Jetty(9090))
-        return server
+        lists: Map<User, List<ToDoList>>,
+    ): ApplicationForAcceptanceTest {
+        val port = 9090
+        val server = Zettai(lists).asServer(Jetty(port))
+        server.start()
+
+        val client = ClientFilters
+            .SetBaseUriFrom(Uri.of("http://localhost:$port"))
+            .then(JettyClient())
+
+        return ApplicationForAcceptanceTest(client, server)
     }
 }
 
@@ -70,23 +85,24 @@ class ToDoListOwner(override val name: String) : ScenarioActor {
             app.getTodoList(name, listName)
         }
     }
-
-    private fun createList(listName: String, items: List<String>) =
-        ToDoList(ListName(listName), items = items.map(::ToDoItem))
 }
 
-class ApplicationForAcceptanceTest {
+class ApplicationForAcceptanceTest(val client: HttpHandler, private val server: AutoCloseable) {
     fun getTodoList(
         user: String,
         listName: String,
     ): ToDoList {
-        val client = JettyClient()
-        val request = Request(Method.GET, "http://localhost:9090/todo/$user/$listName")
-        val response = client(request)
+        val response = client(Request(Method.GET, "/todo/$user/$listName"))
         return if (response.status == Status.OK) {
             parseResponse(response.bodyString())
         } else {
             fail(response.toMessage())
+        }
+    }
+
+    fun runScenario(steps: (ApplicationForAcceptanceTest) -> Unit) {
+        server.use {
+            steps(this)
         }
     }
 
@@ -112,3 +128,6 @@ class ApplicationForAcceptanceTest {
             ?.dropLast(1)
             .orEmpty()
 }
+
+private fun createList(listName: String, items: List<String>) =
+    ToDoList(ListName(listName), items = items.map(::ToDoItem))
