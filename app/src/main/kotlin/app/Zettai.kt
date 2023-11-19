@@ -8,24 +8,19 @@ import org.http4k.core.Status
 import org.http4k.routing.bind
 import org.http4k.routing.path
 import org.http4k.routing.routes
+import util.andThen
 
 data class Zettai(val lists: Map<User, List<ToDoList>>) : HttpHandler {
+    private val showList: HttpHandler =
+        ::extractListData andThen
+            ::fetchListContent andThen
+            ::renderHtmlPage andThen
+            ::createResponse
+
     private val routes: HttpHandler =
         routes(
-            "/todo/{user}/{list}" bind Method.GET to ::showList,
+            "/todo/{user}/{list}" bind Method.GET to showList,
         )
-
-    private fun showList(request: Request): Response {
-        return request
-            .let(::extractListData)
-            .let(::fetchListContent)
-            .let(::renderHtmlPage)
-            .let(::createResponse)
-//        val user: String? = request.path("user")
-//        val list: String? = request.path("list")
-
-//        return Response(Status.OK).body(html)
-    }
 
     override fun invoke(request: Request) = routes(request)
 
