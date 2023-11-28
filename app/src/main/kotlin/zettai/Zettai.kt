@@ -30,33 +30,36 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
         return User(user) to ListName(list)
     }
 
-    private fun fetchListContent(listData: Pair<User, ListName>): ToDoList {
+    private fun fetchListContent(listData: Pair<User, ListName>): ToDoList? {
         val (user, listName) = listData
-        return hub.getList(user, listName) ?: error("Unknown list")
+        return hub.getList(user, listName)
     }
 
-    private fun renderHtmlPage(toDoList: ToDoList) =
-        HtmlPage(
-            """
-            <html>
-                <body>
-                    <h1>Zettai</h1>
-                    <h2>${toDoList.name.value}</h2>
-                    <p>Here is a list <b>${toDoList.name.value}</b>:</p>
-                    <table>
-                        <tbody>${renderItems(toDoList.items)}</tbody>
-                    </table>
-                </body>
-            </html>
-            """.trimIndent(),
-        )
+    private fun renderHtmlPage(toDoList: ToDoList?) =
+        toDoList?.let {
+            HtmlPage(
+                """
+                <html>
+                    <body>
+                        <h1>Zettai</h1>
+                        <h2>${toDoList.name.value}</h2>
+                        <p>Here is a list <b>${toDoList.name.value}</b>:</p>
+                        <table>
+                            <tbody>${renderItems(toDoList.items)}</tbody>
+                        </table>
+                    </body>
+                </html>
+                """.trimIndent(),
+            )
+        }
 
     private fun renderItems(items: List<ToDoItem>) =
         items.map {
             """<tr><td>${it.description}</td></tr>"""
         }.joinToString(separator = " ")
 
-    private fun createResponse(htmlPage: HtmlPage): Response = Response(Status.OK).body(htmlPage.raw)
+    private fun createResponse(htmlPage: HtmlPage?): Response =
+        htmlPage?.let { Response(Status.OK).body(htmlPage.raw) } ?: Response(Status.NOT_FOUND)
 }
 
 data class HtmlPage(val raw: String)

@@ -17,17 +17,16 @@ import org.http4k.core.Status
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
 import org.junit.jupiter.api.fail
-import org.opentest4j.AssertionFailedError
 import strikt.api.expectThat
-import strikt.api.expectThrows
 import strikt.assertions.containsExactlyInAnyOrder
 import strikt.assertions.isNotNull
+import strikt.assertions.isNull
 
 typealias ZettaiDDT = DomainDrivenTest<ZettaiActions>
 
 fun allActions() = setOf(DomainOnlyActions(), HttpActions())
 
-class SeeATodoListTest: ZettaiDDT(allActions()) {
+class SeeATodoListTest : ZettaiDDT(allActions()) {
     val frank by NamedActor(::ToDoListOwner)
     val bob by NamedActor(::ToDoListOwner)
 
@@ -37,42 +36,44 @@ class SeeATodoListTest: ZettaiDDT(allActions()) {
     val gardenItems = listOf("fix the lawn", "water the plants")
 
     @DDT
-    fun `List owners can see their list`() = ddtScenario {
+    fun `List owners can see their list`() =
+        ddtScenario {
             setUp {
                 frank.`starts with a list`(shoppingListName, foodToBuy)
                 bob.`starts with a list`(gardeningListName, gardenItems)
             }.thenPlay(
                 frank.`can see #listname with #itemnames`(shoppingListName, foodToBuy),
-                bob.`can see #listname with #itemnames`(gardeningListName, gardenItems)
+                bob.`can see #listname with #itemnames`(gardeningListName, gardenItems),
             )
         }
 
     @DDT
-    fun `Only owners can see their lists`() = ddtScenario {
-        setUp {
-            frank.`starts with a list`(gardeningListName, gardenItems)
-            bob.`starts with a list`(shoppingListName, foodToBuy)
-        }.thenPlay(
-            frank.`cannot see #listname`(shoppingListName),
-            bob.`cannot see #listname`(gardeningListName)
-        )
-    }
+    fun `Only owners can see their lists`() =
+        ddtScenario {
+            setUp {
+                frank.`starts with a list`(gardeningListName, gardenItems)
+                bob.`starts with a list`(shoppingListName, foodToBuy)
+            }.thenPlay(
+                frank.`cannot see #listname`(shoppingListName),
+                bob.`cannot see #listname`(gardeningListName),
+            )
+        }
 }
 
 class ToDoListOwner(override val name: String) : DdtActor<ZettaiActions>() {
     val user = User(name)
 
-    fun `can see #listname with #itemnames`(listName: String, expectedItems: List<String>) =
-        step(listName, expectedItems) {
-            val list = getToDoList(user, ListName(listName))
-            expectThat(list).isNotNull().get { items.map { it.description } }.containsExactlyInAnyOrder(expectedItems)
-        }
+    fun `can see #listname with #itemnames`(
+        listName: String,
+        expectedItems: List<String>,
+    ) = step(listName, expectedItems) {
+        val list = getToDoList(user, ListName(listName))
+        expectThat(list).isNotNull().get { items.map { it.description } }.containsExactlyInAnyOrder(expectedItems)
+    }
 
     fun `cannot see #listname`(listName: String) =
         step(listName) {
-            expectThrows<AssertionFailedError> {
-                getToDoList(user, ListName(listName))
-            }
+            expectThat(getToDoList(user, ListName(listName))).isNull()
         }
 }
 
@@ -81,8 +82,11 @@ private fun createList(
     items: List<String>,
 ) = ToDoList(ListName(listName), items = items.map(::ToDoItem))
 
-interface ZettaiActions: DdtActions<DdtProtocol> {
-    fun ToDoListOwner.`starts with a list`(listName: String, items: List<String>)
+interface ZettaiActions : DdtActions<DdtProtocol> {
+    fun ToDoListOwner.`starts with a list`(
+        listName: String,
+        items: List<String>,
+    )
 
     fun getToDoList(
         user: User,
@@ -90,23 +94,29 @@ interface ZettaiActions: DdtActions<DdtProtocol> {
     ): ToDoList?
 }
 
-class DomainOnlyActions: ZettaiActions {
+class DomainOnlyActions : ZettaiActions {
     private val lists: MutableMap<User, List<ToDoList>> = mutableMapOf()
 
     private val hub = ToDoListHub(lists)
 
-    override fun ToDoListOwner.`starts with a list`(listName: String, items: List<String>) {
+    override fun ToDoListOwner.`starts with a list`(
+        listName: String,
+        items: List<String>,
+    ) {
         lists[user] = listOf(createList(listName, items))
     }
 
-    override fun getToDoList(user: User, listName: ListName): ToDoList? = hub.getList(user, listName)
+    override fun getToDoList(
+        user: User,
+        listName: ListName,
+    ): ToDoList? = hub.getList(user, listName)
 
     override val protocol: DdtProtocol = DomainOnly
 
     override fun prepare(): DomainSetUp = Ready
 }
 
-class HttpActions(env: String = "local"): ZettaiActions {
+class HttpActions(env: String = "local") : ZettaiActions {
     private val lists: MutableMap<User, List<ToDoList>> = mutableMapOf()
 
     private val hub = ToDoListHub(lists)
@@ -114,16 +124,22 @@ class HttpActions(env: String = "local"): ZettaiActions {
     val server = Zettai(hub).asServer(Jetty(zettaiPort))
     val client = JettyClient()
 
-    override fun ToDoListOwner.`starts with a list`(listName: String, items: List<String>) {
+    override fun ToDoListOwner.`starts with a list`(
+        listName: String,
+        items: List<String>,
+    ) {
         lists[user] = listOf(createList(listName, items))
     }
 
-    override fun getToDoList(user: User, listName: ListName): ToDoList? {
+    override fun getToDoList(
+        user: User,
+        listName: ListName,
+    ): ToDoList? {
         val response = callZettai(Method.GET, "todo/${user.name}/${listName.value}")
-        return if (response.status == Status.OK) {
-            parseResponse(response.bodyString())
-        } else {
-            fail(response.toMessage())
+        return when (response.status) {
+            Status.OK -> parseResponse(response.bodyString())
+            Status.NOT_FOUND -> null
+            else -> fail(response.toMessage())
         }
     }
 
@@ -136,8 +152,10 @@ class HttpActions(env: String = "local"): ZettaiActions {
 
     override fun tearDown(): DdtActions<DdtProtocol> = also { server.stop() }
 
-    private fun callZettai(method: Method, path: String): Response =
-        client(Request(method, "http://localhost:$zettaiPort/$path"))
+    private fun callZettai(
+        method: Method,
+        path: String,
+    ): Response = client(Request(method, "http://localhost:$zettaiPort/$path"))
 
     private fun parseResponse(html: String): ToDoList {
         val nameRegex = "<h2>.*<".toRegex()
