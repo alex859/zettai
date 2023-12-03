@@ -32,6 +32,7 @@ configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
     additionalEditorconfig.set(
         mapOf(
             "max_line_length" to "120",
+            "ktlint_standard_function-naming" to "disabled"
         ),
     )
     reporters {
