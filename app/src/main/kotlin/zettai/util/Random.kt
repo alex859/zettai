@@ -2,6 +2,12 @@ package zettai.util
 
 import kotlin.random.Random
 
+fun stringGenerator(
+    charSet: String,
+    minLength: Int,
+    maxLength: Int,
+): Sequence<String> = generateSequence { randomString(charSet, minLength, maxLength) }
+
 fun randomString(
     charSet: String = DEFAULT_CHARSET,
     minLength: Int = 5,
@@ -14,7 +20,7 @@ fun randomString(
         toString()
     }
 
-private const val ALPHABET_LOWER_CASE = "abcdefghijklmnopqrstuvxyz"
-private val ALPHABET_UPPER_CASE = "abcdefghijklmnopqrstuvxyz".uppercase()
-private const val NUMBERS = "1234567890"
-private val DEFAULT_CHARSET = ALPHABET_LOWER_CASE + ALPHABET_UPPER_CASE + NUMBERS
+internal const val ALPHABET_LOWER_CASE = "abcdefghijklmnopqrstuvxyz"
+internal val ALPHABET_UPPER_CASE = "abcdefghijklmnopqrstuvxyz".uppercase()
+internal const val DIGITS = "1234567890"
+private val DEFAULT_CHARSET = ALPHABET_LOWER_CASE + ALPHABET_UPPER_CASE + DIGITS
