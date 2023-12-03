@@ -7,17 +7,23 @@ import com.ubertob.pesticide.core.Http
 import com.ubertob.pesticide.core.Ready
 import org.http4k.client.JettyClient
 import org.http4k.core.Method
+import org.http4k.core.Method.GET
+import org.http4k.core.Method.POST
 import org.http4k.core.Request
 import org.http4k.core.Response
 import org.http4k.core.Status
+import org.http4k.core.body.Form
+import org.http4k.core.body.toBody
 import org.http4k.server.Jetty
 import org.http4k.server.asServer
 import org.junit.jupiter.api.fail
+import strikt.api.expectThat
+import strikt.assertions.isEqualTo
 
 class HttpActions(env: String = "local") : ZettaiActions {
-    private val lists: MutableMap<User, List<ToDoList>> = mutableMapOf()
+    private val lists: ToDoListStore = mutableMapOf()
 
-    private val hub = ToDoListHub(lists)
+    private val hub = ToDoListHub(ToDoListFetcherFromMap(lists))
     val zettaiPort = 9090
     val server = Zettai(hub).asServer(Jetty(zettaiPort))
     val client = JettyClient()
@@ -26,20 +32,46 @@ class HttpActions(env: String = "local") : ZettaiActions {
         listName: String,
         items: List<String>,
     ) {
-        lists[user] = listOf(createList(listName, items))
+        lists[user] = mutableMapOf(ListName(listName) to createList(listName, items))
     }
 
     override fun getToDoList(
         user: User,
         listName: ListName,
     ): ToDoList? {
-        val response = callZettai(Method.GET, "todo/${user.name}/${listName.value}")
+        val response = callZettai(GET, "todo/${user.name}/${listName.name}")
         return when (response.status) {
             Status.OK -> parseResponse(response.bodyString())
             Status.NOT_FOUND -> null
             else -> fail(response.toMessage())
         }
     }
+
+    override fun addListItem(
+        user: User,
+        listName: ListName,
+        item: ToDoItem,
+    ) {
+        val response =
+            submitToZettai(
+                todoListUrl(user, listName),
+                listOf(
+                    "itemname" to item.description,
+                    "itemdue" to item.dueDate?.toString(),
+                ),
+            )
+        expectThat(response.status).isEqualTo(Status.SEE_OTHER)
+    }
+
+    private fun todoListUrl(
+        user: User,
+        listName: ListName,
+    ) = "todo/${user.name}/${listName.name}"
+
+    private fun submitToZettai(
+        path: String,
+        form: Form,
+    ) = client(Request(POST, "http://localhost:$zettaiPort/$path").body(form.toBody()))
 
     override val protocol: DdtProtocol = Http(env)
 
@@ -59,7 +91,7 @@ class HttpActions(env: String = "local") : ZettaiActions {
         val nameRegex = "<h2>.*<".toRegex()
         val listName = ListName(extractListName(nameRegex, html))
         val itemRegex = "<td>.*?<".toRegex()
-        val items = itemRegex.findAll(html).map { ToDoItem(extractItemsDesc(it)) }.toList()
+        val items = itemRegex.findAll(html).map { ToDoItem(extractItemsDesc(it), null) }.toList()
 
         return ToDoList(listName, items)
     }
@@ -81,4 +113,4 @@ class HttpActions(env: String = "local") : ZettaiActions {
 private fun createList(
     listName: String,
     items: List<String>,
-) = ToDoList(ListName(listName), items = items.map(::ToDoItem))
+) = ToDoList(ListName(listName), items = items.map { ToDoItem(it, null) })

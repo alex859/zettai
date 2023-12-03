@@ -13,4 +13,10 @@ interface ZettaiActions : DdtActions<DdtProtocol> {
         user: User,
         listName: ListName,
     ): ToDoList?
+
+    fun addListItem(
+        user: User,
+        listName: ListName,
+        item: ToDoItem,
+    )
 }

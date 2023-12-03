@@ -21,4 +21,11 @@ class ToDoListOwner(override val name: String) : DdtActor<ZettaiActions>() {
         step(listName) {
             expectThat(getToDoList(user, ListName(listName))).isNull()
         }
+
+    fun `can add #item to #listname`(
+        item: String,
+        listName: String,
+    ) = step(item, listName) {
+        addListItem(user, ListName(listName), ToDoItem(item, null))
+    }
 }
