@@ -20,6 +20,8 @@ data class ListName internal constructor(val name: String) {
     }
 }
 
-data class ToDoItem(val description: String, val dueDate: LocalDate? = null)
+data class ToDoItem(val description: String, val dueDate: LocalDate? = null, val status: ToDoStatus = ToDoStatus.Todo)
+
+enum class ToDoStatus { Todo, InProgress, Done, Blocked }
 
 data class User(val name: String)

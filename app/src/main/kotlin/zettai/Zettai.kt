@@ -1,5 +1,7 @@
 package zettai
 
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import org.http4k.core.HttpHandler
 import org.http4k.core.Method.GET
 import org.http4k.core.Method.POST
@@ -66,27 +68,67 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
         toDoList?.let {
             HtmlPage(
                 """
-                <html>
-                    <body>
-                        <h1>Zettai</h1>
-                        <h2>${toDoList.name.name}</h2>
-                        <p>Here is a list <b>${toDoList.name.name}</b>:</p>
-                        <table>
-                            <tbody>${renderItems(toDoList.items)}</tbody>
-                        </table>
-                    </body>
-                </html>
-                """.trimIndent(),
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+            <title>Zettai - a ToDoList application</title>
+        </head>
+        <body>
+        <div id="container">
+        <div class="row justify-content-md-center"> 
+        <div class="col-md-center">
+            <h1>Zettai</h1>
+            <h2>ToDo List ${it.name.name}</h2>
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Due Date</th>
+                      <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                ${it.renderItems()}
+                </tbody>
+            </table>
+            </div>
+        </div>
+        </div>
+        </body>
+        </html>
+    """.trimIndent()
             )
         }
 
+    private fun ToDoList.renderItems() =
+        items.joinToString("", transform = ::renderItem)
+
+    private fun renderItem(it: ToDoItem): String = """<tr>
+              <td>${it.description}</td>
+              <td>${it.dueDate?.toIsoString().orEmpty()}</td>
+              <td>${it.status}</td>
+            </tr>""".trimIndent()
+
+
+
     private fun renderItems(items: List<ToDoItem>) =
-        items.map {
+        items.joinToString(separator = " ") {
             """<tr><td>${it.description}</td></tr>"""
-        }.joinToString(separator = " ")
+        }
 
     private fun createResponse(htmlPage: HtmlPage?): Response =
         htmlPage?.let { Response(Status.OK).body(htmlPage.raw) } ?: Response(NOT_FOUND)
 }
 
 data class HtmlPage(val raw: String)
+
+fun LocalDate.toIsoString(): String = format(DateTimeFormatter.ISO_LOCAL_DATE)
+
+fun String?.toIsoLocalDate(): LocalDate? =
+    unlessNullOrEmpty { LocalDate.parse(this, DateTimeFormatter.ISO_LOCAL_DATE) }
+
+fun <T: Any> CharSequence?.unlessNullOrEmpty(f: (CharSequence) -> T): T? =
+    if (this.isNullOrEmpty()) null else f(this)
+
+fun String.toStatus(): ToDoStatus = ToDoStatus.valueOf(this)

@@ -9,4 +9,5 @@ dependencies {
     implementation("org.http4k:http4k-server-jetty")
     implementation("org.http4k:http4k-client-jetty")
     testImplementation("com.ubertob.pesticide:pesticide-core:1.6.6")
+    testImplementation("org.jsoup:jsoup:1.12.1")
 }
