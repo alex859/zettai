@@ -5,6 +5,8 @@ import strikt.api.expectThat
 import strikt.assertions.isEqualTo
 import zettai.ToDoItem
 import zettai.ToDoStatus
+import zettai.exercises3.renderTemplate
+import zettai.exercises3.tag
 import zettai.util.`+++`
 import zettai.util.curry
 
@@ -35,6 +37,22 @@ class Exercises4Test {
         val curriedConcat = ::strConcat.curry()
 
         expectThat(curriedConcat `+++` "head" `+++` "tail").isEqualTo("head tail")
+    }
+
+    @Test
+    fun `invokable class`() {
+        data class Person(val name: String, val surname: String)
+        class EmailTemplate(private val templateText: String): (Person) -> String {
+            override fun invoke(person: Person): String {
+                return renderTemplate(templateText, person.toTags())
+            }
+
+            private fun Person.toTags() = mapOf("name" tag name)
+        }
+
+        val emailTemplate = EmailTemplate("Hello {name}")
+        expectThat(emailTemplate(Person("Giorgio", "test"))).isEqualTo("Hello Giorgio")
+        expectThat(emailTemplate(Person("Luca", "test"))).isEqualTo("Hello Luca")
     }
 
     fun strConcat(str1: String, str2: String) = "$str1 $str2"
