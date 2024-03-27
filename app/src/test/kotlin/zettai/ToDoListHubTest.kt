@@ -21,7 +21,7 @@ class ToDoListHubTest {
             val list = randomToDoList()
             fetcher.assignListToUser(user, list)
 
-            val myList = hub.getList(user, list.name)
+            val myList = hub.getList(user, list.listName)
 
             expectThat(myList).isEqualTo(list)
         }
@@ -44,8 +44,8 @@ class ToDoListHubTest {
             fetcher.assignListToUser(user2, list2)
 
             expect {
-                that(hub.getList(user1, list2.name)).isNull()
-                that(hub.getList(user2, list1.name)).isNull()
+                that(hub.getList(user1, list2.listName)).isNull()
+                that(hub.getList(user2, list1.listName)).isNull()
             }
         }
     }

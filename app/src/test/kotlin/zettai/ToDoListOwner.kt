@@ -2,9 +2,12 @@ package zettai
 
 import com.ubertob.pesticide.core.DdtActor
 import strikt.api.expectThat
+import strikt.assertions.containsExactly
 import strikt.assertions.containsExactlyInAnyOrder
+import strikt.assertions.isEmpty
 import strikt.assertions.isNotNull
 import strikt.assertions.isNull
+import strikt.assertions.map
 
 class ToDoListOwner(override val name: String) : DdtActor<ZettaiActions>() {
     val user = User(name)
@@ -28,4 +31,18 @@ class ToDoListOwner(override val name: String) : DdtActor<ZettaiActions>() {
     ) = step(item, listName) {
         addListItem(user, ListName(listName), ToDoItem(item, null))
     }
+
+    fun `cannot see any lists`() =
+        step {
+            val lists = allUserLists(user)
+            expectThat(lists).isEmpty()
+        }
+
+    fun `can see the lists #listNames`(keys: Set<String>) =
+        step(keys) {
+            val lists = allUserLists(user)
+            expectThat(lists)
+                .map(ListName::name)
+                .containsExactly(keys)
+        }
 }

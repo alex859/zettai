@@ -2,7 +2,7 @@ package zettai
 
 import java.time.LocalDate
 
-data class ToDoList(val name: ListName, val items: List<ToDoItem>)
+data class ToDoList(val listName: ListName, val items: List<ToDoItem>)
 
 data class ListName internal constructor(val name: String) {
     companion object {

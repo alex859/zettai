@@ -17,6 +17,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import strikt.api.expectThat
 import strikt.assertions.isEqualTo
+import zettai.ui.HtmlPage
 
 data class HttpActions(val env: String = "local") : ZettaiActions {
     private val fetcher = ToDoListFetcherFromMap(mutableMapOf())
@@ -68,6 +69,25 @@ data class HttpActions(val env: String = "local") : ZettaiActions {
 
         expectThat(response.status).isEqualTo(Status.SEE_OTHER)
     }
+
+    override fun allUserLists(user: User): List<ListName> {
+        val response = callZettai(Method.GET, allListsUrl(user))
+        expectThat(response.status).isEqualTo(Status.OK)
+        val html = HtmlPage(response.bodyString())
+        val names = extractListNamesFromPage(html)
+
+        return names.map(ListName::fromTrusted)
+    }
+
+    private fun extractListNamesFromPage(html: HtmlPage): List<String> {
+        return html.parse()
+            .select("tr")
+            .mapNotNull {
+                it.select("td").firstOrNull()?.text()
+            }
+    }
+
+    private fun allListsUrl(user: User) = "todo/${user.name}"
 
     private fun submitToZettai(
         path: String,

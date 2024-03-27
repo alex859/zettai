@@ -9,6 +9,9 @@ interface ZettaiActions : DdtActions<DdtProtocol> {
         items: List<String>,
     )
 
+    fun ToDoListOwner.`starts with some lists`(lists: Map<String, List<String>>) =
+        lists.forEach { (listName, items) -> `starts with a list`(listName, items) }
+
     fun getToDoList(
         user: User,
         listName: ListName,
@@ -19,4 +22,6 @@ interface ZettaiActions : DdtActions<DdtProtocol> {
         listName: ListName,
         item: ToDoItem,
     )
+
+    fun allUserLists(user: User): List<ListName>
 }

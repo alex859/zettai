@@ -13,6 +13,8 @@ import org.http4k.core.body.form
 import org.http4k.routing.bind
 import org.http4k.routing.path
 import org.http4k.routing.routes
+import zettai.ui.HtmlPage
+import zettai.ui.renderListsPage
 import zettai.util.andUnlessNull
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -30,7 +32,17 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
         routes(
             "/todo/{user}/{list}" bind GET to showList,
             "/todo/{user}/{list}" bind POST to ::addNewItem,
+            "/todo/{user}" bind GET to ::getAllLists,
         )
+
+    private fun getAllLists(request: Request): Response {
+        val user = request.extractUser()
+
+        return hub.getLists(user)
+            ?.let { renderListsPage(user, it) }
+            ?.let(::createResponse)
+            ?: Response(BAD_REQUEST)
+    }
 
     @Suppress("ReturnCount")
     private fun addNewItem(request: Request): Response {
@@ -82,7 +94,7 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
                 <div class="row justify-content-md-center"> 
                 <div class="col-md-center">
                     <h1>Zettai</h1>
-                    <h2>ToDo List ${it.name.name}</h2>
+                    <h2>ToDo List ${it.listName.name}</h2>
                     <table class="table table-hover">
                         <thead>
                             <tr>
@@ -118,7 +130,7 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
     private fun createResponse(htmlPage: HtmlPage): Response = Response(Status.OK).body(htmlPage.raw)
 }
 
-data class HtmlPage(val raw: String)
+private fun Request.extractUser(): User = path("user").orEmpty().let(::User)
 
 fun LocalDate.toIsoString(): String = format(DateTimeFormatter.ISO_LOCAL_DATE)
 

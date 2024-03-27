@@ -11,6 +11,8 @@ interface ZettaiHub {
         listName: ListName,
         item: ToDoItem,
     ): ToDoList?
+
+    fun getLists(user: User): List<ListName>?
 }
 
 typealias ToDoListFetcher = (User, ListName) -> ToDoList?
@@ -20,6 +22,8 @@ interface ToDoListUpdatableFetcher : ToDoListFetcher {
         user: User,
         list: ToDoList,
     ): ToDoList?
+
+    fun getAll(user: User): List<ListName>?
 }
 
 class ToDoListHub(val fetcher: ToDoListUpdatableFetcher) : ZettaiHub {
@@ -37,6 +41,10 @@ class ToDoListHub(val fetcher: ToDoListUpdatableFetcher) : ZettaiHub {
             val newList = copy(items = items.replaceItem(item))
             fetcher.assignListToUser(user, newList)
         }
+
+    override fun getLists(user: User): List<ListName>? {
+        return fetcher.getAll(user)
+    }
 }
 
 private fun List<ToDoItem>.replaceItem(item: ToDoItem): List<ToDoItem> =
@@ -56,6 +64,10 @@ class ToDoListFetcherFromMap(private val store: ToDoListStore) : ToDoListUpdatab
     ): ToDoList? =
         store.compute(user) { _, value ->
             val listMap = value ?: mutableMapOf()
-            listMap.apply { put(list.name, list) }
+            listMap.apply { put(list.listName, list) }
         }?.let { list }
+
+    override fun getAll(user: User): List<ListName>? {
+        return store[user]?.keys?.toList()
+    }
 }

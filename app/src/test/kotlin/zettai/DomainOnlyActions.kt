@@ -14,7 +14,10 @@ class DomainOnlyActions : ZettaiActions {
         listName: String,
         items: List<String>,
     ) {
-        lists[user] = mutableMapOf(ListName(listName) to createList(listName, items))
+        val newList = createList(listName, items)
+        val currentLists: MutableMap<ListName, ToDoList> = lists[user] ?: mutableMapOf()
+        currentLists += (ListName(listName) to newList)
+        lists[user] = currentLists
     }
 
     override fun getToDoList(
@@ -29,6 +32,8 @@ class DomainOnlyActions : ZettaiActions {
     ) {
         hub.addItemToList(user, listName, item)
     }
+
+    override fun allUserLists(user: User) = hub.getLists(user) ?: emptyList()
 
     override val protocol: DdtProtocol = DomainOnly
 
