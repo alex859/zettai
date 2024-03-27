@@ -16,12 +16,14 @@ import org.http4k.routing.bind
 import org.http4k.routing.path
 import org.http4k.routing.routes
 import zettai.util.andThen
+import zettai.util.andUnlessNull
 
 data class Zettai(val hub: ZettaiHub) : HttpHandler {
-    private val showList: HttpHandler =
-        ::extractListData andThen
-            ::fetchListContent andThen
-            ::renderHtmlPage andThen
+    private val showList: HttpHandler = { processUnlessNull(it)?: Response(NOT_FOUND, "Not found") }
+
+    val processUnlessNull = ::extractListData andUnlessNull
+            ::fetchListContent andUnlessNull
+            ::renderHtmlPage andUnlessNull
             ::createResponse
 
     private val routes: HttpHandler =
@@ -67,6 +69,7 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
     private fun renderHtmlPage(toDoList: ToDoList?) =
         toDoList?.let {
             HtmlPage(
+                //language=html
                 """
         <!DOCTYPE html>
         <html>
@@ -110,15 +113,7 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
               <td>${it.status}</td>
             </tr>""".trimIndent()
 
-
-
-    private fun renderItems(items: List<ToDoItem>) =
-        items.joinToString(separator = " ") {
-            """<tr><td>${it.description}</td></tr>"""
-        }
-
-    private fun createResponse(htmlPage: HtmlPage?): Response =
-        htmlPage?.let { Response(Status.OK).body(htmlPage.raw) } ?: Response(NOT_FOUND)
+    private fun createResponse(htmlPage: HtmlPage): Response = Response(Status.OK).body(htmlPage.raw)
 }
 
 data class HtmlPage(val raw: String)
