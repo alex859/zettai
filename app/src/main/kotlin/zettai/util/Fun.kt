@@ -10,4 +10,5 @@ fun <T> T.printIt(prefix: String = ">"): T = also { println("$prefix $this") }
 
 fun <A, B, C> ((A, B) -> C).curry(): (A) -> (B) -> C = { a -> { b -> this(a, b) } }
 
+@Suppress("FunctionNaming")
 infix fun <A, B> ((A) -> B).`+++`(a: A): B = this(a)

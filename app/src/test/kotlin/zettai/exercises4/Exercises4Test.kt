@@ -22,8 +22,10 @@ class Exercises4Test {
 
     @Test
     fun `a curry`() {
-        fun sum(num1: Int, num2: Int) = num1 + num2
-
+        fun sum(
+            num1: Int,
+            num2: Int,
+        ) = num1 + num2
 
         val plus3 = ::sum.curry() `+++` 3
         val starPrefixFn = ::strConcat.curry()("*")
@@ -42,7 +44,8 @@ class Exercises4Test {
     @Test
     fun `invokable class`() {
         data class Person(val name: String, val surname: String)
-        class EmailTemplate(private val templateText: String): (Person) -> String {
+
+        class EmailTemplate(private val templateText: String) : (Person) -> String {
             override fun invoke(person: Person): String {
                 return renderTemplate(templateText, person.toTags())
             }
@@ -55,7 +58,10 @@ class Exercises4Test {
         expectThat(emailTemplate(Person("Luca", "test"))).isEqualTo("Hello Luca")
     }
 
-    fun strConcat(str1: String, str2: String) = "$str1 $str2"
+    fun strConcat(
+        str1: String,
+        str2: String,
+    ) = "$str1 $str2"
 }
 
 fun <T> T.discardUnless(predicate: T.() -> Boolean): T? = takeIf { predicate(it) }

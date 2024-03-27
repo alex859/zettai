@@ -7,16 +7,18 @@ import strikt.assertions.isEqualTo
 class StringTemplateTest {
     @Test
     fun `a test`() {
-        val template = """
+        val template =
+            """
             Happy birthday {name} {surname}
             from {sender}
-        """.trimIndent()
+            """.trimIndent()
 
-        val data = mapOf(
-            "name" tag "Uberto",
-            "surname" tag "Barbini",
-            "sender" tag "PragProg",
-        )
+        val data =
+            mapOf(
+                "name" tag "Uberto",
+                "surname" tag "Barbini",
+                "sender" tag "PragProg",
+            )
 
         val actual = renderTemplate(template, data)
 
@@ -24,14 +26,17 @@ class StringTemplateTest {
             """
             Happy birthday Uberto Barbini
             from PragProg
-        """.trimIndent())
+            """.trimIndent(),
+        )
     }
-
 }
 
 data class StringTag(val text: String)
 
-fun renderTemplate(template: String, data: Map<String, StringTag>): String {
+fun renderTemplate(
+    template: String,
+    data: Map<String, StringTag>,
+): String {
     return data.entries.fold(template) { acc, tag -> acc.replace("{${tag.key}}", tag.value.text) }
 }
 
