@@ -21,7 +21,11 @@ import zettai.ui.HtmlPage
 
 data class HttpActions(val env: String = "local") : ZettaiActions {
     private val fetcher = ToDoListFetcherFromMap(mutableMapOf())
-    private val hub = ToDoListHub(fetcher)
+    private val hub =
+        zettaiHub(
+            eventStore = ToDoListEventStore(eventStreamer = ToDoListEventStreamerInMemory()),
+            fetcher = fetcher,
+        )
 
     val zettaiPort = 8000 // different from the one in main
     val server = Zettai(hub).asServer(Jetty(zettaiPort))
@@ -78,6 +82,17 @@ data class HttpActions(val env: String = "local") : ZettaiActions {
 
         return names.map(ListName::fromTrusted)
     }
+
+    override fun createList(
+        user: User,
+        listName: ListName,
+    ) {
+        val response = submitToZettai(allListsUrl(user), newListForm(listName))
+
+        expectThat(response.status).isEqualTo(Status.SEE_OTHER)
+    }
+
+    private fun newListForm(listName: ListName) = listOf("listname" to listName.name)
 
     private fun extractListNamesFromPage(html: HtmlPage): List<String> {
         return html.parse()

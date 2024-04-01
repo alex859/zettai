@@ -20,19 +20,20 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 data class Zettai(val hub: ZettaiHub) : HttpHandler {
-    private val showList: HttpHandler = { processUnlessNull(it) ?: Response(NOT_FOUND, "Not found") }
-
     val processUnlessNull =
         ::extractListData andUnlessNull
             ::fetchListContent andUnlessNull
             ::renderHtmlPage andUnlessNull
             ::createResponse
 
+    private val showList: HttpHandler = { processUnlessNull(it) ?: Response(NOT_FOUND, "Not found") }
+
     private val routes: HttpHandler =
         routes(
             "/todo/{user}/{list}" bind GET to showList,
             "/todo/{user}/{list}" bind POST to ::addNewItem,
             "/todo/{user}" bind GET to ::getAllLists,
+            "/todo/{user}" bind POST to ::createNewList,
         )
 
     private fun getAllLists(request: Request): Response {
@@ -41,6 +42,15 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
         return hub.getLists(user)
             ?.let { renderListsPage(user, it) }
             ?.let(::createResponse)
+            ?: Response(BAD_REQUEST)
+    }
+
+    private fun createNewList(request: Request): Response {
+        val user = request.extractUser()
+        return request.extractListNameFromForm("listname")
+            ?.let { listName -> CreateToDoList(user, listName) }
+            ?.let(hub::handle)
+            ?.let { Response(SEE_OTHER).header("Location", "/todo/${user.name}") }
             ?: Response(BAD_REQUEST)
     }
 
@@ -55,14 +65,12 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
                 ?.let(::ListName)
                 ?: return Response(BAD_REQUEST)
 
-        val item =
-            request.form("itemname")
-                ?.let(::ToDoItem)
-                ?: return Response(BAD_REQUEST)
-
-        return hub.addItemToList(user, listName, item)
+        return request.form("itemname")
+            ?.let(::ToDoItem)
+            ?.let { AddToDoItem(user, listName, it) }
+            ?.let(hub::handle)
             ?.let { Response(SEE_OTHER).header("Location", "/todo/${user.name}/${listName.name}") }
-            ?: Response(NOT_FOUND)
+            ?: Response(BAD_REQUEST)
     }
 
     override fun invoke(request: Request) = routes(request)
@@ -131,6 +139,9 @@ data class Zettai(val hub: ZettaiHub) : HttpHandler {
 }
 
 private fun Request.extractUser(): User = path("user").orEmpty().let(::User)
+
+private fun Request.extractListNameFromForm(formName: String): ListName? =
+    form(formName)?.let(ListName.Companion::fromUntrusted)
 
 fun LocalDate.toIsoString(): String = format(DateTimeFormatter.ISO_LOCAL_DATE)
 

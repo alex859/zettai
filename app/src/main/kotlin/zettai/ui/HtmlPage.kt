@@ -16,6 +16,7 @@ fun renderListsPage(
     lists: List<ListName>,
 ): HtmlPage =
     HtmlPage(
+        //language=html
         """
         <!DOCTYPE html>
         <html>

@@ -8,7 +8,14 @@ import com.ubertob.pesticide.core.Ready
 class DomainOnlyActions : ZettaiActions {
     private val lists: ToDoListStore = mutableMapOf()
 
-    private val hub = ToDoListHub(ToDoListFetcherFromMap(lists))
+    val fetcher = ToDoListFetcherFromMap(store = lists)
+    val retriever = ToDoListEventStore(ToDoListEventStreamerInMemory())
+    private val hub =
+        ToDoListHub(
+            fetcher = fetcher,
+            commandHandler = ToDoListCommandHandler(retriever, readModel = fetcher),
+            persistEvent = retriever,
+        )
 
     override fun ToDoListOwner.`starts with a list`(
         listName: String,
@@ -34,6 +41,13 @@ class DomainOnlyActions : ZettaiActions {
     }
 
     override fun allUserLists(user: User) = hub.getLists(user) ?: emptyList()
+
+    override fun createList(
+        user: User,
+        listName: ListName,
+    ) {
+        hub.handle(CreateToDoList(user, listName))
+    }
 
     override val protocol: DdtProtocol = DomainOnly
 

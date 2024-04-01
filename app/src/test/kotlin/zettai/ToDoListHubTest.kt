@@ -12,7 +12,11 @@ class ToDoListHubTest {
 
     val fetcher = ToDoListFetcherFromMap(emptyStore())
 
-    val hub = ToDoListHub(fetcher)
+    val hub =
+        zettaiHub(
+            eventStore = ToDoListEventStore(eventStreamer = ToDoListEventStreamerInMemory()),
+            fetcher = fetcher,
+        )
 
     @Test
     fun `get list by user and name`() {

@@ -45,4 +45,9 @@ class ToDoListOwner(override val name: String) : DdtActor<ZettaiActions>() {
                 .map(ListName::name)
                 .containsExactly(keys)
         }
+
+    fun `can create a new list called #listname`(listName: String) =
+        step(listName) {
+            createList(user, ListName.fromTrusted(listName))
+        }
 }

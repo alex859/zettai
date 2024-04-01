@@ -1,5 +1,8 @@
 package zettai.util
 
+import zettai.ListName
+import zettai.ToDoItem
+import zettai.User
 import kotlin.random.Random
 
 fun stringGenerator(
@@ -19,6 +22,12 @@ fun randomString(
         }
         toString()
     }
+
+fun randomListName() = ListName.fromTrusted(randomString())
+
+fun randomUser() = User(name = randomString())
+
+fun randomToDoItem() = ToDoItem(description = randomString())
 
 internal const val ALPHABET_LOWER_CASE = "abcdefghijklmnopqrstuvxyz"
 internal val ALPHABET_UPPER_CASE = "abcdefghijklmnopqrstuvxyz".uppercase()
